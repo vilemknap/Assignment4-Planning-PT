@@ -1,0 +1,541 @@
+---
+title: "Assignment 4 Planning and Modelling of Public Transport"
+author: "Vilém Knap, Dimitris Argyros, Kyriakos Michailidis, Gustave Pellier, Illiana Dritsa"
+date: "April 22, 2021"
+output: 
+  pdf_document:
+    fig_caption: yes
+header-includes:
+ \usepackage{float}
+ \floatplacement{figure}{H}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem statement
+
+As vaccinations proceeds we can assume that more people are more willing to use public transport again. We would like to use factor analysis method to discover latent variables in the dataset. The latent variables that we would like to find is called Willingness to use Public transport. As we are trying to model how are people willing to use public transport again given by different vaccination scenarios. Therefore we will try to find out different willingess to use public transport for our defined vaccination scenarios (11%, 40%, 75%, 95% vaccinated populations). That means 4 latent variables.
+
+# Loading the dataset
+
+```{r}
+ dataset <- read.csv("~/DTU/3. semestr/Planning and Modelling of Public Transport/Assignment 4/dataset.csv", sep=";")
+```
+
+# Descriptive statistics
+
+## Overview of the data
+
+```{r}
+## Dimension of HE (number of rows and columns)
+dim(dataset)
+```
+
+
+```{r}
+## Column names
+names(dataset)
+```
+
+```{r}
+## The first rows
+head(dataset)
+```
+
+```{r}
+## The last rows
+tail(dataset)
+```
+
+```{r}
+## Default summary
+summary(dataset)
+```
+
+```{r}
+## Another summary function also including the data type
+str(dataset)
+```
+
+
+```{r}
+sapply(dataset, function(x) sum(is.na(x)))
+```
+
+## Handling with NA values
+### Income
+As the dataset contians quite low amount of samples (215) we have decided to impute missing values. Regarding the income we have missing observations for students only, so we will use most frequent value for students which is 7000DKK for lower and 10000DKK for upper range
+
+
+```{r}
+dataset$Income_monthly_lower[is.na(dataset$Income_monthly_lower)] <- 7000
+dataset$Income_monthly_upper[is.na(dataset$Income_monthly_upper)] <- 10000
+```
+
+
+#### Converting Income into thousands of DKK
+```{r}
+dataset$Income_monthly_lower <- dataset$Income_monthly_lower/1000
+dataset$Income_monthly_upper <- dataset$Income_monthly_uppe/1000
+```
+
+### Work or study distance
+Regarding the distances we have 13 observations for upper and 6 for lower range.
+It seems to be appropriate approach to impute distances based on region of living and occuptaion
+
+```{r}
+new.data <- dataset[ is.na(dataset$work_or_study_distance_lower | dataset$work_or_study_distance_upper)  & (dataset$Occupation == 5)  , ]
+```
+As the unemployed people do not commute to any workplace, we fill their work or study distance with zero
+
+```{r}
+dataset$work_or_study_distance_lower[is.na(dataset$work_or_study_distance_lower)] <- 0
+dataset$work_or_study_distance_upper[is.na(dataset$work_or_study_distance_upper)] <- 0
+```
+
+## Deleting X column
+
+```{r}
+dataset_filtered <- subset(dataset, select = -X )
+```
+
+
+## Histograms
+
+```{r}
+hist(dataset_filtered$Vaccinated_now, breaks = 2)
+hist(dataset_filtered$Vaccinated_future, breaks = 2)
+hist(dataset_filtered$how_often_PT_before_covid, breaks = 6)
+hist(dataset_filtered$how_often_PT_during_lockdown_covid, breaks = 6)
+hist(dataset_filtered$how_often_PT_no_lockdown_covid, breaks = 6)
+#Safety on the bus
+hist(dataset_filtered$safety_bus_no_vacc, main="How safe did you feel on the bus?", breaks = 6)
+hist(dataset_filtered$safety_bus_now_11percent_vacc, main="How safe are you feeling on the bus?", breaks = 6)
+hist(dataset_filtered$safety_bus_40percent_vacc, main="How safe would you feel in the bus when 40% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_bus_75percent_vacc, main="How safe would you feel in the bus when 75% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_bus_95percent_vacc, main="How safe would you feel in the bus when 95% population vaccinated?", breaks = 6)
+#Safety on the train
+hist(dataset_filtered$safety_train_no_vacc, main="How safe did you feel on the train?", breaks = 6)
+hist(dataset_filtered$safety_train_now_11percent_vacc, main="How safe are you feeling on the train?", breaks = 6)
+hist(dataset_filtered$safety_train_40percent_vacc, main="How safe would you feel in the train when 40% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_train_75percent_vacc, main="How safe would you feel in the train when 75% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_train_95percent_vacc, main="How safe would you feel in the train when 95% population vaccinated?", breaks = 6)
+#Safety on the metro
+hist(dataset_filtered$safety_metro_no_vacc, main="How safe did you feel on the metro?", breaks = 6)
+hist(dataset_filtered$safety_metro_now_11percent_vacc, main="How safe are you feeling on the metro?", breaks = 6)
+hist(dataset_filtered$safety_metro_40percent_vacc, main="How safe would you feel in the metro when 40% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_metro_75percent_vacc, main="How safe would you feel in the metro when 75% population vaccinated?", breaks = 6)
+hist(dataset_filtered$safety_metro_95percent_vacc, main="How safe would you feel in the metro when 95% population vaccinated?", breaks = 6)
+```
+
+## More histograms
+
+```{r}
+#Factors importance during reopening
+hist(dataset_filtered$more_frequent_vehicle_desinfection_importance_reopening, main="How important do you feel is more frequent desinfection of vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$increased_cleanliness_importance_reopening, main="How important do you feel is increased cleanliness during the reopening?", breaks = 6)
+
+hist(dataset_filtered$decreased_ticket_price_importance_reopening, main="How important do you feel is to decrease ticket price during the reopening?", breaks = 6)
+
+hist(dataset_filtered$more_frequent_service_importance_reopening, main="How important do you feel is more frequent service during the reopening?", breaks = 6)
+
+hist(dataset_filtered$reduced_capacity_importance_reopening, main="How important do you feel is decreased capacity of vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$reduced_time_spent_in_PT_importance_reopening, main="How important do you feel is to reduced time spent in vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$mask_usage_in_PT_importance_reopening, main="How important do you feel is to use mask in vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$opened_windows_in_vehicle_importance_reopening, main="How important do you feel is to have windows opened in vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$X2_meters_distance_in_PT_importance_reopening, main="How important do you feel is to maintain 2 meters distance in vehicles during the reopening?", breaks = 6)
+
+hist(dataset_filtered$online_PT_schedule_importance_reopening, main="How important do you feel is to have online schedule during the reopening?", breaks = 6)
+
+hist(dataset_filtered$increased_fare_percieving, main="How would you percieve increasing of fare during the reopening?", breaks = 6)
+
+hist(dataset_filtered$reduced_seat_percieving, main="How would you percieve reduced seats in public transport vehicles during reopening?", breaks = 6)
+## IS THIS SAME QUESTION AS REDUCED CAPACITY?
+
+hist(dataset_filtered$reduced_private_vehicles_percieving, main="How would you percieve to reduce amount of private vehicles during reopening?", breaks = 6)
+## How would you achieve that, more taxes on cars? 
+
+hist(dataset_filtered$bus_fleet_electrification_increased_fare_percieving, main="How would you percieve to electrify bus fleet with corresponding increase of fare?", breaks = 6)
+```
+
+### Travel times and cost
+```{r}
+hist(dataset_filtered$car_travel_cost, main="Car travel cost empirical distribution", breaks = 50)
+hist(dataset_filtered$car_travel_time, main="Car travel time empirical distribution", breaks = 10)
+
+hist(dataset_filtered$car_share_walk_cost, main="Car share travel cost empirical distribution", breaks = 10)
+hist(dataset_filtered$car_share__walk_time, main="Car share travel time empirical distribution", breaks = 10)
+
+hist(dataset_filtered$bus_travel_cost, main="Bus travel cost empirical distribution", breaks = 10)
+hist(dataset_filtered$bus_travel_time, main="Bus travel time empirical distribution", breaks = 10)
+
+hist(dataset_filtered$bicycle_travel_cost, main="Bicycle travel cost empirical distribution", breaks = 10)
+hist(dataset_filtered$bicycle_travel_time, main="Bicycle travel time empirical distribution", breaks = 10)
+
+hist(dataset_filtered$cycling_train_travel_cost, main="cycling_train travel cost empirical distribution", breaks = 10)
+hist(dataset_filtered$cycling_train_travel_time, main="cycling_train travel time empirical distribution", breaks = 10)
+
+```
+Uniformly distributed...
+
+### Acess to car
+
+```{r}
+hist(dataset_filtered$Access_to_car,main="Acess to car",breaks = 2)
+```
+
+We have only respondents without access to car. That can be caused by selection bias as the questionnare was spread out on social networks and most of the respondents are studenets.
+### Stated mode choice
+```{r}
+hist(dataset_filtered$stated_mode_choice_11._vaccinated,main="Stated mode choice when 11 percent of population vaccinated", breaks = 6)
+hist(dataset_filtered$stated_mode_choice_40._vaccinated,main="Stated mode choice when 40 percent of population vaccinated", breaks = 6)
+hist(dataset_filtered$stated_mode_choice_75._vaccinated,main="Stated mode choice when 75 percent of population vaccinated", breaks = 6)
+hist(dataset_filtered$stated_mode_choice_95._vaccinated,main="Stated mode choice when 95 percent of population vaccinated", breaks = 6)
+```
+We can see decreasing trend of car usage when vaccination of population increases. On the beginning 80 respondents has chosen car as their mean of travel from DTU to Rosenborg Slot. If 40 percent of population is vaccinated, approx 65 respondents would go by car. If 75 percent of population is vaccinated approx 50 respondents would go by car. If 95 percent of population is vaccinated approx 49 respondents would go by car.
+The car sharing options is the least favorite when 11, 75 and 95 percent of population is vaccinated. 
+With increasing amount of vaccinated population combination of bike and train increases. If 75 percent and or more people vaccinated, then it becomes the most favorite option. 
+In the beginning (11 percent vaccinated population) bus is the least favorite option. As the vaccination proceeds hypothetical usage of bus increases. If 95% population is vaccinated, it become the second most favorite option, after combination of bike and train.
+
+### Socio-demographic characteristics
+```{r}
+hist(dataset_filtered$Gender, main="Distribution of gender", breaks=3)
+hist(dataset_filtered$Age_group, main="Distribution of age", breaks=6)
+hist(dataset_filtered$Household_size, main="Distribution of household size", breaks=6)
+hist(dataset_filtered$Occupation, main="Distribution of occupations", breaks=6)
+```
+### Geographic characteristics
+
+```{r}
+hist(dataset_filtered$work_or_study_distance_lower, breaks = 6, main="Distribution of distances")
+hist(dataset_filtered$work_or_study_distance_upper, breaks = 6, main="Distribution of distances")
+```
+
+### Economic characterstics
+
+```{r}
+hist(dataset_filtered$Income_monthly_lower, breaks = 6, main="Distribution of income lower range")
+hist(dataset_filtered$Income_monthly_upper, breaks = 6, main="Distribution of income upper range")
+```
+
+We can observe that we have slightly more observations for female than male.
+The majority of the respondest were young people.
+
+
+
+
+### One hot encoding of region of living
+To convert string variables into categorical, we use one hot encoding
+
+```{r}
+library(vtreat)
+tz <- vtreat::designTreatmentsZ(dataset_filtered, c("Region_of_living"))
+new_df <- vtreat::prepare(tz, dataset_filtered, extracols = "target")
+head(new_df[, 1:5])
+```
+
+Include dummies into our dataset
+```{r}
+dataset_filtered$Region_of_living_Hovedstaden <- new_df$Region_of_living_lev_x_Hovedstaden
+dataset_filtered$Region_of_living_Midtjylland <- new_df$Region_of_living_lev_x_Midtjylland
+dataset_filtered$Region_of_living_Nordjylland <- new_df$Region_of_living_lev_x_Nordjylland
+dataset_filtered$Region_of_living_Outside_Denmark <- new_df$Region_of_living_lev_x_Outside_Denmark
+```
+
+### Removing original string
+```{r}
+dataset_filtered_numerical <- subset(dataset_filtered, select=-c(Region_of_living))
+```
+
+```{r}
+cov(dataset_filtered_numerical)
+```
+
+## Correlation matrix 
+```{r}
+cor(dataset_filtered_numerical)
+```
+
+# Explanatory Factor analysis
+## Testing the dataset for EFA
+To answer the question whether our dataset is good for explanatory factor analysis, Barlet´s test of correlation adequacy is used. Significant values (p <. 0.05) are good.
+
+# Confirmatory Factor Analysis
+We would like to use factor analysis method to discover latent variables in the dataset. The latent variables that we would like to find is called Willingness to use Public transport. As we are trying to model how are people willing to use public transport again given by different vaccination scenarios. Therefore we will try to find out different willingess to use public transport for our defined vaccination scenarios (11%, 40%, 75%, 95% vaccinated populations). That means 4 latent variables.
+
+
+## Assumptions for Factor Analysis model
+
+Assumptions:
+
+Variables used should be metric.  Dummy variables can also be considered, but only in special cases.
+Sample size: Sample size should be more than 200.  In some cases, sample size  may be considered for 5 observations per variable.
+Homogeneous sample: A sample should be homogenous.  Violation of this assumption increases the sample size as the number of variables increases.  Reliability analysis is conducted to check the homogeneity between variables.
+In exploratory factor analysis, multivariate normality is not required.
+Correlation: At least 0.30 correlations are required between the research variables.
+There should be no outliers in the data.
+
+As our variables are not continuous and normally distributed, we cannot use regular Factor analysis based on Eigenvalues.
+The variables in the dataset are mostly ordinal with 0 to 5 ratings, or binary (access to car). As the income and distance to workplace are divided into intervals, it should be considered as categorical as well. The only continuous variables are travel times and travel costs but as we have only one destination with fixed values, these are uniformly distributed as seen on the histogram above.
+
+
+ As we have ordinal categorical variables, standard pearson correlation cannot be used.
+Standard FA assumes that the data are normally distributed, the variables are continuos and the linear relationship between variables exists. This assumption can be relaxed using a polychoric correlation matrix. If the model includes variables that are dichotomous or ordinal a factor analysis can be performed using a polychoric correlation matrix.
+
+## Pearson correlation v.s. polychoric correlation
+
+
+### Pearson
+```{r}
+library(psych)
+pear_cor = cor(dataset_filtered_numerical)
+pdf(file="pearson_correlation.pdf",width=25,height=25)
+cor.plot(pear_cor, numbers=T, upper=FALSE, main = "Pearson Correlation", show.legend = FALSE)
+dev.off()
+```
+### Polychoric correlation
+
+```{r}
+## Polychoric correlation
+poly_cor = polychoric(dataset_filtered_numerical)
+rho = poly_cor$rho
+save(rho, file = "polychoric")
+### Thresholds/Scaling results
+poly_cor$tau
+```
+
+ Uniformly distributed variables are making mess -> remove them...
+ Still cannot calculate polychoric correlation matrix
+
+```{r}
+dataset_filtered_numerical <- subset(dataset_filtered_numerical, select=-c(car_travel_cost,car_travel_time,bus_travel_cost,bus_travel_time,bicycle_travel_time, bicycle_travel_cost,bus_travel_time, bus_travel_cost,car_share_walk_cost,car_share__walk_time,cycling_train_travel_cost,cycling_train_travel_time, Income_monthly_upper, Income_monthly_lower, work_or_study_distance_lower,work_or_study_distance_upper,Access_to_car))
+```
+## Factor analysis for reopening variables
+
+
+## Shorteing variables names
+
+```{r}
+more_freq_veh_desinf <- dataset_filtered_numerical$more_frequent_vehicle_desinfection_importance_reopening
+increased_cleanliness <- dataset_filtered_numerical$increased_cleanliness_importance_reopening
+decreased_ticket_price <- dataset_filtered_numerical$decreased_ticket_price_importance_reopening
+more_frequent_service <- dataset_filtered_numerical$more_frequent_service_importance_reopening
+reduced_capacity <- dataset_filtered_numerical$reduced_capacity_importance_reopening
+reduced_time_spent_in_PT <- dataset_filtered_numerical$reduced_time_spent_in_PT_importance_reopening
+mask_usage_in_PT <- dataset_filtered_numerical$mask_usage_in_PT_importance_reopening
+X2_meters_distance_in_PT <- dataset_filtered_numerical$X2_meters_distance_in_PT_importance_reopening
+open_windows_in_vehicle <- dataset_filtered_numerical$opened_windows_in_vehicle_importance_reopening
+informartion_campaigns_from_operators <- dataset_filtered_numerical$informartion_campaigns_from_operators_importance_reopening
+online_PT_schedule <- dataset_filtered_numerical$online_PT_schedule_importance_reopening
+gender <- dataset_filtered_numerical$Gender
+dataset_filtered_reopening <- data.frame(more_freq_veh_desinf, increased_cleanliness,decreased_ticket_price,more_frequent_service,reduced_capacity,
+                 reduced_time_spent_in_PT,mask_usage_in_PT,X2_meters_distance_in_PT,open_windows_in_vehicle,informartion_campaigns_from_operators,online_PT_schedule)
+```
+
+
+
+
+## Calculate Polychoric correlation
+
+```{r}
+## Polychoric correlation
+library(psych)
+poly_cor = polychoric(dataset_filtered_reopening)
+rho = poly_cor$rho
+save(rho, file = "polychoric")
+### Thresholds/Scaling results
+poly_cor$tau
+```
+## Corelation plot
+```{r}
+cor.plot(poly_cor$rho, numbers=T, upper=FALSE, main = "Polychoric Correlation", show.legend = FALSE)
+```
+
+
+Exporting into pdf for better visibility
+```{r}
+pdf(file="polychoric_correlation_reopening.pdf",width=9,height=9)
+cor.plot(poly_cor$rho, numbers=T, upper=FALSE, main = "Polychoric Correlation", show.legend = FALSE)
+dev.off()
+```
+On the correlation plot, we can observe that during reopening, the majority of factors have correlation coefficinet between them oscilating arround 0.50. There is strong positive correlation between importance of more frequent vehicle services and increased cleanliness(0.64) and 2 meters distance nad mask usage (0.72). 
+
+## Determining optimal number of factors
+
+```{r}
+load("polychoric")
+# Scree plot
+fa.parallel(rho, fm="pa", fa="fa", main = "Scree Plot")
+```
+According to resulst inspected from elbow plot, the optimal number of factor for reopening variables is 2. 
+
+### Number of factors = 2
+
+```{r}
+# Polychoric factor analysis with cluster rotation
+poly_model_cluster = fa(dataset_filtered_reopening, nfactor=2, cor="poly", fm="mle", rotate = "cluster")
+save(poly_model_cluster, file = "poly_model_cluster")
+poly_model_cluster$loadings
+```
+
+Factor analysis with two latent factors is performed, with maximum likelihood estimation. 40.1% of variance is explained cumulatively.F1 explains 31% of total variance whether F2 explains 10% of total variance.
+
+### Cluster analysis plot
+```{r}
+load("poly_model_cluster")
+# Cluster analysis plot
+fa.diagram(poly_model_cluster)
+```
+
+In the cluster analysis plot, the interpretation of two  factors is visually displayed, all loadings with an absolute value greater than 0.3 are represented as an edge. The interpretation of the two latent factors can be following:
+It seems that latent factor ML1 clusters indicators that are related to particular vehicle and ML2 clusters indicators related to public transport services in general. It can be interpreted that ML1 may be latent factor for preference/importance for measurement that can be done in each vehicle, regardless whether it is in metro, train or bus. On the ohter hand ML2 may be latent factor for preference/importance for actions that can be performed from strategic point of view. However we can conclude that during reopening, for large majority of respondents are more important measurements in particular vehicle rather than measurements from decision maker's perspective that affects public transport services in general.
+
+### Categorizing by gender
+
+A powerful visual aid for exploratory factor analysis is the biplot, which shows both the observations and factors in a plot. In order to get some understanding of gender difference in the preferences for measurements, the observation in the biplot is marked in orange if the participant is female, otherwise in blue.
+
+```{r}
+dat <- data.frame(more_freq_veh_desinf, increased_cleanliness,decreased_ticket_price,more_frequent_service,reduced_capacity,
+                 reduced_time_spent_in_PT,mask_usage_in_PT,X2_meters_distance_in_PT,open_windows_in_vehicle,informartion_campaigns_from_operators,online_PT_schedule,
+                 gender)
+features = dat[1:11]
+```
+
+```{r}
+# Polychoric factor analysis
+poly_model = fa(features, nfactor=2, cor="poly", fm="mle", rotate = "cluster")
+save(poly_model, file = "poly_model")
+poly_model$loadings
+```
+
+
+
+```{r}
+load("poly_model_cluster")
+# Biplot by gender
+biplot(poly_model_cluster, pch=c(21,16)[dat[,"gender"]],
+       group = (dat[,"gender"]),
+       main="Biplot by gender", col = c("orange","blue"))
+```
+It iis difficult to read from this however it semmes that there are no differences in measurements importance for man and women, as the most of the observations overlaps.
+
+
+# Safety perceptions for different modes and different vaccinations across gender
+Now we would like to investigate whether women and men percieve safety differently during traveling by public transports mode for different vaccination scenarios
+By using Analysis of tabular methodology and chi square tests.
+## Bus safetyness
+
+```{r}
+safe_b_no_vac<- dataset_filtered$safety_bus_no_vacc
+safe_b_11prc_vac<-dataset_filtered$safety_bus_now_11percent_vacc
+safe_b_40prc_vac<-dataset_filtered$safety_bus_40percent_vacc
+safety_b_75prc_vac<-dataset_filtered$safety_bus_75percent_vacc
+safety_b_95prc_vac <-dataset_filtered$safety_bus_95percent_vacc
+gender <- dataset_filtered$Gender
+safety_bus <- data.frame(gender,safe_b_no_vac,safe_b_11prc_vac,safe_b_40prc_vac,safety_b_75prc_vac,safety_b_95prc_vac)
+
+```
+
+
+```{r}
+library(janitor)
+safety_bus_0 <-tabyl(safety_bus, gender, safe_b_no_vac)
+safety_bus_11 <-tabyl(safety_bus, gender, safe_b_11prc_vac)
+safety_bus_40 <-tabyl(safety_bus, gender, safe_b_40prc_vac)
+safety_bus_75 <-tabyl(safety_bus, gender, safety_b_75prc_vac)
+safety_bus_95 <-tabyl(safety_bus, gender, safety_b_95prc_vac)
+```
+
+```{r}
+# Perform ChiSquare test
+chisq_bus_0<-chisq.test(safety_bus_0)
+chisq_bus_11<-chisq.test(safety_bus_11)
+chisq_bus_40<-chisq.test(safety_bus_40)
+chisq_bus_75<-chisq.test(safety_bus_75)
+chisq_bus_95<-chisq.test(safety_bus_95)
+```
+As we have low sample size, we have to use simulation.
+```{r}
+chisq.test(safety_bus_0, simulate.p.value = TRUE)
+```
+There is no evidence showing a change in distribution among safety percieving in bus when 0% vaccinated
+
+```{r}
+chisq.test(safety_bus_11, simulate.p.value = TRUE)
+```
+There is  difference in distribution among safety percieving in bus when 11% vaccinated
+```{r}
+chisq.test(safety_bus_40, simulate.p.value = TRUE)
+```
+There is  difference in distribution among safety percieving in bus when 40% vaccinated
+
+```{r}
+chisq.test(safety_bus_75, simulate.p.value = TRUE)
+```
+
+There is  difference in distribution among safety percieving in bus when 75% vaccinated
+
+```{r}
+chisq.test(safety_bus_95, simulate.p.value = TRUE)
+```
+
+There is no evidence showing a change in distribution among safety percieving in bus when 95% vaccinated.
+This analysis does not make much sense as it its difficult to measure relationship of change in distribution....
+
+
+
+
+# Hypothesis testing for different vaccination scenarios.
+
+Now we would like to inspect, whether there is critical vaccination rate accross diferent modes and inversely whether there is critical mode across vaccination rate in the sample.
+By using Analysis of tabular methodology and chi square tests we will compare two modes against each other in contingency tables
+
+```{r}
+
+mode_11 <- c(sum(dataset_filtered$stated_mode_choice_11._vaccinated == 1),sum(dataset_filtered$stated_mode_choice_11._vaccinated == 2),sum(dataset_filtered$stated_mode_choice_11._vaccinated == 3),sum(dataset_filtered$stated_mode_choice_11._vaccinated == 4),sum(dataset_filtered$stated_mode_choice_11._vaccinated == 5))
+
+mode_40 <- c(sum(dataset_filtered$stated_mode_choice_40._vaccinated == 1),sum(dataset_filtered$stated_mode_choice_40._vaccinated == 2),sum(dataset_filtered$stated_mode_choice_40._vaccinated == 3),sum(dataset_filtered$stated_mode_choice_40._vaccinated == 4),sum(dataset_filtered$stated_mode_choice_40._vaccinated == 5))
+
+mode_75 <- c(sum(dataset_filtered$stated_mode_choice_75._vaccinated == 1),sum(dataset_filtered$stated_mode_choice_75._vaccinated == 2),sum(dataset_filtered$stated_mode_choice_75._vaccinated == 3),sum(dataset_filtered$stated_mode_choice_75._vaccinated == 4),sum(dataset_filtered$stated_mode_choice_75._vaccinated == 5))
+
+mode_95 <- c(sum(dataset_filtered$stated_mode_choice_95._vaccinated == 1),sum(dataset_filtered$stated_mode_choice_95._vaccinated == 2),sum(dataset_filtered$stated_mode_choice_95._vaccinated == 3),sum(dataset_filtered$stated_mode_choice_95._vaccinated == 4),sum(dataset_filtered$stated_mode_choice_95._vaccinated == 5))
+```
+
+```{r}
+mode_counts <- matrix(c(mode_11,mode_40,mode_75,mode_95),
+              nrow = 4, dimnames = list(c("11%","40%","75%","95%"), c("car","carshare","bike-train","bus","bicycle")))
+```
+
+```{r}
+# Look at data
+mode_counts
+addmargins(mode_counts)
+```
+
+```{r}
+# Perform ChiSquare test
+chisq.test(mode_counts)
+```
+
+The interpration of chi square test will be written here
+
+```{r}
+# Useful results from chisq.test function
+chi1 <- chisq.test(mode_counts)
+chi1$expected
+chi1$observed
+```
+
+```{r}
+# Visualize contingecy tables for interpretation of significant interactions/dependencies
+mosaicplot(mode_counts, shade = TRUE)
+```
+
+The interpration of mosaic plot will be written here
