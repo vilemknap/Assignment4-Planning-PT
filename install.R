@@ -5,4 +5,4 @@ install.packages("shinydashboard")
 install.packages('leaflet')
 install.packages('psych')
 install.packages('janitor')
-
+install.packages('ggplot2')
